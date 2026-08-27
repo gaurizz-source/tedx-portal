@@ -1,7 +1,14 @@
 TEDxIGDTUW Event Hub & Opportunity Platform
 A web application designed for TEDxIGDTUW to launch campus events, issue digital passes with unique IDs and QR codes, manage speaker curation pitches, receive core team applications, and verify attendee check-ins.
+![alt text](image-2.png)
+![alt text](image-1.png)
+![alt text](image-5.png)
+![alt text](image-3.png)
+![alt text](image.png)
+![alt text](image-4.png)
 
-[Insert Project Preview Screenshot / Image Here]
+DEFAULT ADMIN ACCESS PASSCODE
+                            tedx2026admin
 
 Key Features
 For Attendees & Students
