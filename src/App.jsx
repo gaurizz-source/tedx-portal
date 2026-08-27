@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { QrCode, CheckCircle, Shield, User, Download, FileText, LogOut, Check, Camera, Search, Filter, Users, Award, Clock } from 'lucide-react';
+import { Shield, Download, FileText, LogOut, Check, Camera, Search, Filter, Users, Award, Clock, Mic, UserPlus, Send, Mail } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { db } from './firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import * as XLSX from 'xlsx';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('register');
@@ -12,34 +13,47 @@ export default function App() {
   const [authMode, setAuthMode] = useState('signup');
   const [formData, setFormData] = useState({ name: '', email: '', branch: '', year: '' });
   
-  // Real-time Database State
+  // Speaker & Recruitment Form States
+  const [speakerData, setSpeakerData] = useState({ name: '', email: '', talkTitle: '', bio: '', linkedin: '' });
+  const [recruitmentData, setRecruitmentData] = useState({ name: '', email: '', branch: '', year: '', domain: 'Technical', whyJoin: '' });
+
+  // Database Collections States
   const [registrations, setRegistrations] = useState([]);
+  const [speakerApps, setSpeakerApps] = useState([]);
+  const [recruitApps, setRecruitApps] = useState([]);
 
   const [scanInput, setScanInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBranch, setFilterBranch] = useState('All');
   const [useCameraMode, setUseCameraMode] = useState(false);
 
-  // Live Sync with Firebase Firestore
+  // Firestore Real-time Listeners
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "registrations"), (snapshot) => {
-      const regList = snapshot.docs.map(doc => ({
-        docId: doc.id,
-        ...doc.data()
-      }));
+    const unsubRegs = onSnapshot(collection(db, "registrations"), (snapshot) => {
+      const regList = snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
       setRegistrations(regList);
-
-      // Logged-in user data update if updated by admin
       if (currentUser) {
         const updatedSelf = regList.find(r => r.id === currentUser.id);
         if (updatedSelf) setCurrentUser(updatedSelf);
       }
     });
 
-    return () => unsub();
+    const unsubSpeakers = onSnapshot(collection(db, "speaker_applications"), (snapshot) => {
+      setSpeakerApps(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
+    });
+
+    const unsubRecruits = onSnapshot(collection(db, "recruitment_applications"), (snapshot) => {
+      setRecruitApps(snapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() })));
+    });
+
+    return () => {
+      unsubRegs();
+      unsubSpeakers();
+      unsubRecruits();
+    };
   }, [currentUser?.id]);
 
-  // Live Camera Scanner Setup
+  // Scanner Logic
   useEffect(() => {
     let scanner;
     if (activeTab === 'admin' && useCameraMode) {
@@ -59,6 +73,7 @@ export default function App() {
     };
   }, [activeTab, useCameraMode]);
 
+  // Form Submissions
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email) return alert('Fill required fields');
@@ -76,14 +91,31 @@ export default function App() {
 
     try {
       const docRef = await addDoc(collection(db, "registrations"), newUser);
-      const createdUser = { ...newUser, docId: docRef.id };
-      setCurrentUser(createdUser);
+      setCurrentUser({ ...newUser, docId: docRef.id });
       setIsLoggedIn(true);
       setActiveTab('dashboard');
+      alert(`Registration Successful! Ticket ID: ${newId}`);
     } catch (error) {
-      console.error("Error writing document: ", error);
       alert("Registration failed! Check Firebase connection.");
     }
+  };
+
+  const handleSpeakerSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, "speaker_applications"), { ...speakerData, appliedAt: new Date().toISOString() });
+      alert("Speaker Application Submitted Successfully!");
+      setSpeakerData({ name: '', email: '', talkTitle: '', bio: '', linkedin: '' });
+    } catch (err) { alert("Submission failed!"); }
+  };
+
+  const handleRecruitmentSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, "recruitment_applications"), { ...recruitmentData, appliedAt: new Date().toISOString() });
+      alert("Recruitment Application Submitted Successfully!");
+      setRecruitmentData({ name: '', email: '', branch: '', year: '', domain: 'Technical', whyJoin: '' });
+    } catch (err) { alert("Submission failed!"); }
   };
 
   const handleLogin = (e) => {
@@ -94,7 +126,7 @@ export default function App() {
       setIsLoggedIn(true);
       setActiveTab('dashboard');
     } else {
-      alert('User record not found in database!');
+      alert('User record not found!');
     }
   };
 
@@ -119,81 +151,63 @@ export default function App() {
     }
   };
 
-  // Canvas High Resolution Certificate Generator
+  // EXCEL / CSV EXPORT FEATURE
+  const exportToExcel = () => {
+    const dataToExport = registrations.map(r => ({
+      'Ticket ID': r.id,
+      'Full Name': r.name,
+      'Email': r.email,
+      'Branch': r.branch,
+      'Year': r.year,
+      'Attended / Checked In': r.attended ? 'YES' : 'NO',
+      'Registration Date': r.date || 'N/A'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendees");
+    XLSX.writeFile(workbook, `TEDxIGDTUW_Attendees_List.xlsx`);
+  };
+
+  // Certificate Download Logic
   const downloadCertificate = (user) => {
     const canvas = document.createElement('canvas');
-    canvas.width = 1200;
-    canvas.height = 850;
+    canvas.width = 1200; canvas.height = 850;
     const ctx = canvas.getContext('2d');
 
-    // Canvas Background
-    ctx.fillStyle = '#090D16';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Outer Decorative Border
-    ctx.strokeStyle = '#EB0028'; // TED Red
-    ctx.lineWidth = 14;
-    ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
+    ctx.fillStyle = '#090D16'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#EB0028'; ctx.lineWidth = 14; ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
+    ctx.strokeStyle = '#374151'; ctx.lineWidth = 2; ctx.strokeRect(45, 45, canvas.width - 90, canvas.height - 90);
 
-    ctx.strokeStyle = '#374151';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(45, 45, canvas.width - 90, canvas.height - 90);
-
-    // Header Text
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 44px sans-serif';
-    ctx.textAlign = 'center';
+    ctx.fillStyle = '#FFFFFF'; ctx.font = 'bold 44px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText('CERTIFICATE OF PARTICIPATION', 600, 150);
 
-    ctx.fillStyle = '#EB0028';
-    ctx.font = 'bold 30px sans-serif';
+    ctx.fillStyle = '#EB0028'; ctx.font = 'bold 30px sans-serif';
     ctx.fillText('TEDxIGDTUW 2026', 600, 210);
 
-    ctx.fillStyle = '#9CA3AF';
-    ctx.font = '22px sans-serif';
+    ctx.fillStyle = '#9CA3AF'; ctx.font = '22px sans-serif';
     ctx.fillText('This certificate is proudly awarded to', 600, 310);
 
-    // Attendee Name
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'extrabold 52px sans-serif';
+    ctx.fillStyle = '#FFFFFF'; ctx.font = 'extrabold 52px sans-serif';
     ctx.fillText(user.name.toUpperCase(), 600, 400);
 
-    // Accent line
-    ctx.fillStyle = '#EB0028';
-    ctx.fillRect(400, 420, 400, 4);
+    ctx.fillStyle = '#EB0028'; ctx.fillRect(400, 420, 400, 4);
 
-    // Description
-    ctx.fillStyle = '#D1D5DB';
-    ctx.font = '20px sans-serif';
+    ctx.fillStyle = '#D1D5DB'; ctx.font = '20px sans-serif';
     ctx.fillText(`For active participation in the annual TEDxIGDTUW flagship event.`, 600, 490);
     ctx.fillText(`Issued on ${user.date || 'August 2026'} • Verified Registration ID: ${user.id}`, 600, 530);
 
-    // Signature Area
-    ctx.strokeStyle = '#4B5563';
-    ctx.beginPath();
-    ctx.moveTo(250, 680); ctx.lineTo(450, 680);
-    ctx.moveTo(750, 680); ctx.lineTo(950, 680);
-    ctx.stroke();
-
-    ctx.fillStyle = '#9CA3AF';
-    ctx.font = '16px sans-serif';
-    ctx.fillText('Organising Committee', 350, 710);
-    ctx.fillText('Faculty Coordinator', 850, 710);
-
-    // Trigger Download
     const link = document.createElement('a');
     link.download = `${user.name.replace(/\s+/g, '_')}_TEDx_Certificate.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   };
 
-  // Metrics Logic for Counter Cards
   const totalCount = registrations.length;
   const attendedCount = registrations.filter(r => r.attended).length;
   const pendingCount = totalCount - attendedCount;
   const percentAttended = totalCount > 0 ? Math.round((attendedCount / totalCount) * 100) : 0;
 
-  // Search & Filter Query
   const filteredRegistrations = registrations.filter(r => {
     const matchesSearch = r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -204,27 +218,34 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 font-sans">
+      {/* NAVBAR */}
       <nav className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('register')}>
             <span className="text-2xl font-black tracking-tight text-red-600">TEDx</span>
             <span className="text-xl font-bold tracking-tight text-white">IGDTUW</span>
           </div>
-          <div className="flex gap-3 text-sm font-medium">
+          <div className="flex gap-2 text-sm font-medium overflow-x-auto py-2">
             {!isLoggedIn ? (
-              <button onClick={() => setActiveTab('register')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'register' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              <button onClick={() => setActiveTab('register')} className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap ${activeTab === 'register' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                 Registration
               </button>
             ) : (
-              <button onClick={() => setActiveTab('dashboard')} className={`px-4 py-2 rounded-lg transition ${activeTab === 'dashboard' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              <button onClick={() => setActiveTab('dashboard')} className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
                 My Pass & Certificate
               </button>
             )}
-            <button onClick={() => setActiveTab('admin')} className={`px-4 py-2 rounded-lg border border-gray-700 transition flex items-center gap-1.5 ${activeTab === 'admin' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
+            <button onClick={() => setActiveTab('speakers')} className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap ${activeTab === 'speakers' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              Nominate Speaker
+            </button>
+            <button onClick={() => setActiveTab('recruitments')} className={`px-3 py-1.5 rounded-lg transition whitespace-nowrap ${activeTab === 'recruitments' ? 'bg-red-600 text-white' : 'text-gray-400 hover:text-white'}`}>
+              Join Team
+            </button>
+            <button onClick={() => setActiveTab('admin')} className={`px-3 py-1.5 rounded-lg border border-gray-700 transition flex items-center gap-1.5 whitespace-nowrap ${activeTab === 'admin' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}>
               <Shield className="w-4 h-4 text-red-500" /> Admin Desk
             </button>
             {isLoggedIn && (
-              <button onClick={() => { setIsLoggedIn(false); setCurrentUser(null); setActiveTab('register'); }} className="px-3 py-2 text-gray-400 hover:text-red-400">
+              <button onClick={() => { setIsLoggedIn(false); setCurrentUser(null); setActiveTab('register'); }} className="px-3 py-1.5 text-gray-400 hover:text-red-400">
                 <LogOut className="w-4 h-4" />
               </button>
             )}
@@ -297,7 +318,93 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW 2: USER DASHBOARD */}
+        {/* VIEW 2: SPEAKER APPLICATIONS */}
+        {activeTab === 'speakers' && (
+          <div className="max-w-2xl mx-auto bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-xl">
+            <div className="flex items-center gap-3 mb-6">
+              <Mic className="w-8 h-8 text-red-500" />
+              <div>
+                <h2 className="text-2xl font-extrabold text-white">Call for Speakers</h2>
+                <p className="text-xs text-gray-400">Apply or nominate a speaker for TEDxIGDTUW 2026</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSpeakerSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Speaker Full Name</label>
+                <input type="text" required value={speakerData.name} onChange={e => setSpeakerData({...speakerData, name: e.target.value})} placeholder="Dr. Jane Doe" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Contact Email</label>
+                <input type="email" required value={speakerData.email} onChange={e => setSpeakerData({...speakerData, email: e.target.value})} placeholder="speaker@domain.com" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Proposed Talk Title / Topic</label>
+                <input type="text" required value={speakerData.talkTitle} onChange={e => setSpeakerData({...speakerData, talkTitle: e.target.value})} placeholder="e.g. The Future of AI in Healthcare" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Short Bio & Past Experience</label>
+                <textarea required rows={3} value={speakerData.bio} onChange={e => setSpeakerData({...speakerData, bio: e.target.value})} placeholder="Tell us about yourself..." className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">LinkedIn Profile URL</label>
+                <input type="url" value={speakerData.linkedin} onChange={e => setSpeakerData({...speakerData, linkedin: e.target.value})} placeholder="https://linkedin.com/in/username" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+              </div>
+              <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2">
+                <Send className="w-4 h-4" /> Submit Speaker Nomination
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* VIEW 3: RECRUITMENTS */}
+        {activeTab === 'recruitments' && (
+          <div className="max-w-2xl mx-auto bg-gray-900 border border-gray-800 p-8 rounded-2xl shadow-xl">
+            <div className="flex items-center gap-3 mb-6">
+              <UserPlus className="w-8 h-8 text-red-500" />
+              <div>
+                <h2 className="text-2xl font-extrabold text-white">Join Society Team</h2>
+                <p className="text-xs text-gray-400">Apply to become an organizing committee member for TEDxIGDTUW</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleRecruitmentSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Full Name</label>
+                <input type="text" required value={recruitmentData.name} onChange={e => setRecruitmentData({...recruitmentData, name: e.target.value})} placeholder="Student Name" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">College Email</label>
+                <input type="email" required value={recruitmentData.email} onChange={e => setRecruitmentData({...recruitmentData, email: e.target.value})} placeholder="student@igdtuw.ac.in" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Branch</label>
+                  <input type="text" required value={recruitmentData.branch} onChange={e => setRecruitmentData({...recruitmentData, branch: e.target.value})} placeholder="CSE / IT" className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Domain</label>
+                  <select value={recruitmentData.domain} onChange={e => setRecruitmentData({...recruitmentData, domain: e.target.value})} className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600">
+                    <option value="Technical">Technical & Web</option>
+                    <option value="Graphic Design">Graphic Design & Video</option>
+                    <option value="Public Relations">Public Relations & Marketing</option>
+                    <option value="Logistics">Sponsorship & Logistics</option>
+                    <option value="Curation">Speaker Curation</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Why do you want to join TEDxIGDTUW?</label>
+                <textarea required rows={3} value={recruitmentData.whyJoin} onChange={e => setRecruitmentData({...recruitmentData, whyJoin: e.target.value})} placeholder="Share your motivation..." className="w-full bg-gray-950 border border-gray-800 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+              </div>
+              <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2">
+                <Send className="w-4 h-4" /> Submit Application
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* VIEW 4: USER DASHBOARD */}
         {activeTab === 'dashboard' && currentUser && (
           <div className="space-y-6">
             <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-6">
@@ -340,17 +447,22 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW 3: ADMIN DESK & REAL-TIME COUNTER METRICS */}
+        {/* VIEW 5: ADMIN DESK */}
         {activeTab === 'admin' && (
           <div className="space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-white">Organiser Dashboard</h2>
-                <p className="text-xs text-gray-400">Live Firebase real-time database venue check-in desk.</p>
+                <p className="text-xs text-gray-400">Live venue management, speaker nominations & recruitments.</p>
               </div>
+
+              {/* EXCEL EXPORT BUTTON */}
+              <button onClick={exportToExcel} className="bg-green-700 hover:bg-green-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl border border-green-600 flex items-center gap-2 transition">
+                <Download className="w-4 h-4" /> Export All Data to Excel (.xlsx)
+              </button>
             </div>
 
-            {/* REAL-TIME COUNTER METRICS */}
+            {/* METRICS */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
                 <div className="flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase">
@@ -361,30 +473,27 @@ export default function App() {
 
               <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
                 <div className="flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase">
-                  <Award className="w-4 h-4 text-green-500" /> Attended (Checked-in)
+                  <Award className="w-4 h-4 text-green-500" /> Attended
                 </div>
                 <div className="text-2xl font-black text-green-400 mt-1">{attendedCount}</div>
               </div>
 
               <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
                 <div className="flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase">
-                  <Clock className="w-4 h-4 text-yellow-500" /> Pending Entry
+                  <Mic className="w-4 h-4 text-purple-500" /> Speaker Applicants
                 </div>
-                <div className="text-2xl font-black text-yellow-400 mt-1">{pendingCount}</div>
+                <div className="text-2xl font-black text-purple-400 mt-1">{speakerApps.length}</div>
               </div>
 
               <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
                 <div className="flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase">
-                  Check-in Rate
+                  <UserPlus className="w-4 h-4 text-yellow-500" /> Recruits Applied
                 </div>
-                <div className="text-2xl font-black text-white mt-1">{percentAttended}%</div>
-                <div className="w-full bg-gray-800 rounded-full h-1.5 mt-2 overflow-hidden">
-                  <div className="bg-red-600 h-1.5 rounded-full" style={{ width: `${percentAttended}%` }}></div>
-                </div>
+                <div className="text-2xl font-black text-yellow-400 mt-1">{recruitApps.length}</div>
               </div>
             </div>
 
-            {/* SCANNER & MANUAL OVERRIDE */}
+            {/* ATTENDEE SCANNER */}
             <div className="bg-gray-900 border border-gray-800 p-4 rounded-2xl space-y-4">
               <div className="flex gap-4">
                 <button onClick={() => setUseCameraMode(false)} className={`flex-1 py-2 rounded-xl text-xs font-bold border transition ${!useCameraMode ? 'bg-red-600 border-red-500 text-white' : 'bg-gray-950 border-gray-800 text-gray-400'}`}>
@@ -405,30 +514,13 @@ export default function App() {
               ) : (
                 <div className="flex flex-col items-center justify-center bg-gray-950 border border-gray-800 rounded-xl p-4">
                   <div id="reader" className="w-full max-w-sm text-white"></div>
-                  <p className="text-xs text-gray-500 mt-2">Point attendee QR towards camera</p>
                 </div>
               )}
             </div>
 
-            {/* ATTENDEE LIST WITH SEARCH & FILTERS */}
+            {/* ATTENDEE TABLE */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden p-4 space-y-4">
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="relative w-full md:w-64">
-                  <Search className="w-4 h-4 absolute left-3 top-3 text-gray-500" />
-                  <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search Name/ID..." className="w-full bg-gray-950 border border-gray-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-red-600" />
-                </div>
-
-                <div className="flex items-center gap-2 w-full md:w-auto">
-                  <Filter className="w-4 h-4 text-gray-500" />
-                  <select value={filterBranch} onChange={e => setFilterBranch(e.target.value)} className="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-red-600">
-                    <option value="All">All Branches</option>
-                    <option value="CSE">CSE</option>
-                    <option value="IT">IT</option>
-                    <option value="ECE">ECE</option>
-                  </select>
-                </div>
-              </div>
-
+              <h3 className="font-bold text-white text-lg">Event Attendees</h3>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm text-gray-400">
                   <thead className="bg-gray-950 text-gray-200 border-b border-gray-800 text-xs uppercase font-semibold">
@@ -436,8 +528,7 @@ export default function App() {
                       <th className="px-4 py-3">Ticket ID</th>
                       <th className="px-4 py-3">Name</th>
                       <th className="px-4 py-3">Branch / Year</th>
-                      <th className="px-4 py-3">Check-in Status</th>
-                      <th className="px-4 py-3">Action</th>
+                      <th className="px-4 py-3">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800">
@@ -451,24 +542,9 @@ export default function App() {
                         <td className="px-4 py-3">{reg.branch} ({reg.year})</td>
                         <td className="px-4 py-3">
                           {reg.attended ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-green-400 bg-green-950/60 px-2.5 py-1 rounded-full border border-green-800/40">
-                              <Check className="w-3 h-3" /> Checked-in
-                            </span>
+                            <span className="text-xs text-green-400 bg-green-950/60 px-2.5 py-1 rounded-full border border-green-800/40">Checked-in</span>
                           ) : (
-                            <span className="text-xs text-gray-500 bg-gray-950 px-2.5 py-1 rounded-full border border-gray-800">
-                              Pending
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {!reg.attended ? (
-                            <button onClick={() => markAttendance(reg.id)} className="text-xs bg-gray-800 hover:bg-red-600 hover:text-white text-gray-200 px-3 py-1.5 rounded-lg border border-gray-700 transition">
-                              Mark Present
-                            </button>
-                          ) : (
-                            <button onClick={() => downloadCertificate(reg)} className="text-xs bg-green-950/80 hover:bg-green-900 text-green-300 px-3 py-1.5 rounded-lg border border-green-800/60 flex items-center gap-1 transition">
-                              <Download className="w-3 h-3" /> Certificate
-                            </button>
+                            <span className="text-xs text-gray-500 bg-gray-950 px-2.5 py-1 rounded-full border border-gray-800">Pending</span>
                           )}
                         </td>
                       </tr>
