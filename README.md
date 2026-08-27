@@ -1,4 +1,4 @@
-TEDxIGDTUW Event Hub & Opportunity Platform
+*TEDxIGDTUW Event Hub & Opportunity Platform*
 A web application designed for TEDxIGDTUW to launch campus events, issue digital passes with unique IDs and QR codes, manage speaker curation pitches, receive core team applications, and verify attendee check-ins.
 ![alt text](image-2.png)
 ![alt text](image-1.png)
@@ -8,31 +8,31 @@ A web application designed for TEDxIGDTUW to launch campus events, issue digital
 ![alt text](image-4.png)
 
 DEFAULT ADMIN ACCESS PASSCODE
-                            tedx2026admin
+                            *tedx2026admin*
 
 Key Features
 For Attendees & Students
 Browse flagship conferences, workshops, and challenges with real-time search and filters.
 
-Interactive modal flow triggering Sign-Up or Login before pass issuance.
+Interactive modal flow triggering *Sign-Up or Login* before pass issuance.
 
-Digital Pass generation featuring user details, a unique Ticket ID, and a QR code.
+Digital *Pass generation* featuring user details, a unique Ticket ID, and a *QR code*.
 
 Pass retrieval using registered college email addresses.
 
-For Speakers & Team Applicants
+For *Speakers & Team Applicants*
 Submit proposed talk topics, pitches, and past experience for speaker curation.
 
-Apply for specialized roles including Technical, Design, PR, Logistics, and Curation.
+*Apply for specialized roles* including Technical, Design, PR, Logistics, and Curation.
 
-Dedicated promotion application pathway for existing team members.
+Dedicated *promotion application pathway* for existing team members.
 
 For Organizers & Admins
-Protected Admin Portal accessed via passcode authentication.
+*Protected Admin Portal* accessed via passcode authentication.
 
-Live attendance verification to toggle attendee status between Present and Pending.
+Live *attendance verification* to toggle attendee status between Present and Pending.
 
-Centralized database view for attendee lists and candidate applications.
+*Centralized database view* for attendee lists and candidate applications.
 
 Tech Stack
 Frontend: React.js
