@@ -594,7 +594,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 1. Speaker Fields */}
+              {/* Speaker Fields */}
               {applicantType === 'speaker' && (
                 <div className="space-y-4 border-t border-gray-800/80 pt-4">
                   <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider block">Speaker Proposal Details</span>
@@ -624,7 +624,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* 2. New Team Member Fields */}
+              {/* New Team Member Fields */}
               {applicantType === 'new' && (
                 <div className="space-y-4 border-t border-gray-800/80 pt-4">
                   <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">New Candidate Details</span>
@@ -663,18 +663,17 @@ export default function App() {
                       rows={3}
                       value={recruitmentData.whyJoin}
                       onChange={e => setRecruitmentData({...recruitmentData, whyJoin: e.target.value})}
-                      placeholder="Share your motivation and key skills..."
+                      placeholder="Describe your motivation and relevant skillsets..."
                       className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 </div>
               )}
 
-              {/* 3. Internal Progression Fields */}
+              {/* Internal Progression Fields */}
               {applicantType === 'internal' && (
                 <div className="space-y-4 border-t border-gray-800/80 pt-4">
-                  <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">Internal Leadership Application</span>
-                  
+                  <span className="text-[11px] font-bold text-indigo-400 uppercase tracking-wider block">Internal Promotion Application</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Current Role *</label>
@@ -683,46 +682,35 @@ export default function App() {
                         required
                         value={recruitmentData.currentRole}
                         onChange={e => setRecruitmentData({...recruitmentData, currentRole: e.target.value})}
-                        placeholder="e.g. Curation Coordinator"
+                        placeholder="e.g. Curation Associate"
                         className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Target Leadership Role *</label>
+                      <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Target Leadership Position</label>
                       <select
                         value={recruitmentData.targetRole}
                         onChange={e => setRecruitmentData({...recruitmentData, targetRole: e.target.value})}
                         className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
                       >
-                        <option value="President">President</option>
                         <option value="Executive Director">Executive Director</option>
-                        <option value="Domain Lead / Head">Domain Lead / Head</option>
-                        <option value="Vice President">Vice President</option>
+                        <option value="Head of Curation">Head of Curation</option>
+                        <option value="Tech Lead">Tech Lead</option>
+                        <option value="Head of Sponsorship">Head of Sponsorship</option>
+                        <option value="Media Director">Media Director</option>
                       </select>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Contributions in Previous Tenure *</label>
+                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Past Contributions & Future Vision *</label>
                     <textarea
                       required
-                      rows={3}
-                      value={recruitmentData.pastContributions}
-                      onChange={e => setRecruitmentData({...recruitmentData, pastContributions: e.target.value})}
-                      placeholder="Detail key initiatives, events managed, or sponsorships secured during your tenure..."
-                      className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Vision & Strategy for Target Role *</label>
-                    <textarea
-                      required
-                      rows={3}
+                      rows={4}
                       value={recruitmentData.futureVision}
                       onChange={e => setRecruitmentData({...recruitmentData, futureVision: e.target.value})}
-                      placeholder="What new ideas, processes, or goals will you execute if selected?"
+                      placeholder="Detail your key contributions to TEDxIGDTUW and your proposed vision for this role..."
                       className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-indigo-500"
                     />
                   </div>
@@ -731,7 +719,7 @@ export default function App() {
 
               <button
                 type="submit"
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-3.5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-red-600/30"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-xs"
               >
                 <Send className="w-4 h-4" /> Submit Application
               </button>
@@ -743,75 +731,126 @@ export default function App() {
         {activeTab === 'admin' && (
           <div className="space-y-6">
             {!adminAuth ? (
-              <div className="max-w-md mx-auto bg-gray-900 border border-gray-800 p-8 rounded-2xl">
-                <div className="flex items-center gap-3 mb-6">
-                  <Shield className="w-6 h-6 text-emerald-400" />
-                  <h2 className="text-xl font-bold text-white">Admin Authentication</h2>
-                </div>
+              <div className="max-w-md mx-auto bg-gray-900 border border-gray-800 p-8 rounded-3xl shadow-2xl text-center">
+                <Shield className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h2 className="text-xl font-bold text-white mb-2">Admin Portal Login</h2>
+                <p className="text-xs text-gray-400 mb-6">Enter system security passcode to access management tools.</p>
                 <form onSubmit={handleAdminLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Passcode</label>
-                    <input type="password" required value={adminPasscode} onChange={e => setAdminPasscode(e.target.value)} placeholder="Enter admin passcode" className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500" />
-                  </div>
-                  <button type="submit" className="w-full bg-emerald-500 text-gray-950 font-black py-3 rounded-xl transition">
-                    Access Admin Portal
+                  <input
+                    type="password"
+                    placeholder="Enter Passcode (tedx2026admin)"
+                    value={adminPasscode}
+                    onChange={e => setAdminPasscode(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-red-500 text-center"
+                  />
+                  <button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs py-2.5 rounded-xl transition">
+                    Authenticate Access
                   </button>
                 </form>
               </div>
             ) : (
-              <div className="space-y-8">
-                {/* ADMIN HEADER */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-900 p-6 rounded-2xl border border-gray-800">
-                  <div>
-                    <h2 className="text-2xl font-black text-white">TEDx Admin Dashboard</h2>
-                    <p className="text-xs text-gray-400">Scan passes, track analytics, and manage check-ins & applications</p>
+              <div className="space-y-6">
+                {/* Metric Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-900 border border-gray-800 p-5 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-400 font-semibold uppercase">Total Passes</p>
+                      <h3 className="text-2xl font-black text-white">{totalRegistrations}</h3>
+                    </div>
+                    <Ticket className="w-8 h-8 text-emerald-400" />
                   </div>
-                  <div className="flex items-center gap-3 w-full md:w-auto">
-                    <button 
-                      onClick={exportApplicationsCSV} 
-                      className="bg-indigo-600/20 text-indigo-400 border border-indigo-500/40 hover:bg-indigo-500/30 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition"
-                    >
-                      <Download className="w-4 h-4" /> Export Applications CSV
+
+                  <div className="bg-gray-900 border border-gray-800 p-5 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-400 font-semibold uppercase">Verified Present</p>
+                      <h3 className="text-2xl font-black text-emerald-400">{totalAttended}</h3>
+                    </div>
+                    <UserCheck className="w-8 h-8 text-emerald-400" />
+                  </div>
+
+                  <div className="bg-gray-900 border border-gray-800 p-5 rounded-2xl flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-400 font-semibold uppercase">Turnout Rate</p>
+                      <h3 className="text-2xl font-black text-white">{attendanceRate}%</h3>
+                    </div>
+                    <TrendingUp className="w-8 h-8 text-indigo-400" />
+                  </div>
+                </div>
+
+                {/* Quick Scanner & Action Bar */}
+                <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
+                  <div className="flex-1 flex items-center gap-2 w-full">
+                    <ScanLine className="w-5 h-5 text-emerald-400" />
+                    <input
+                      type="text"
+                      placeholder="Enter Pass ID (e.g. TEDX-123) for Quick Check-in..."
+                      value={scanInputId}
+                      onChange={e => setScanInputId(e.target.value)}
+                      className="bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none flex-1"
+                    />
+                    <button onClick={() => handleQuickScan()} className="bg-emerald-500 text-gray-950 text-xs font-bold px-4 py-2 rounded-xl hover:bg-emerald-600">
+                      Check In
                     </button>
-                    <button 
-                      onClick={exportRegistrationsCSV} 
-                      className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-emerald-500/30 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition"
-                    >
-                      <Download className="w-4 h-4" /> Export Attendees CSV
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button onClick={exportRegistrationsCSV} className="bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5">
+                      <Download className="w-4 h-4" /> Export Attendees
+                    </button>
+                    <button onClick={exportApplicationsCSV} className="bg-gray-800 hover:bg-gray-700 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5">
+                      <Download className="w-4 h-4" /> Export Applications
                     </button>
                   </div>
                 </div>
 
-                {/* ANALYTICS & STATS CARDS */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl flex items-center gap-4">
-                    <div className="bg-blue-600/20 text-blue-400 p-3 rounded-xl">
-                      <TrendingUp className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 font-medium uppercase">Total RSVPs</p>
-                      <h3 className="text-2xl font-black text-white">{totalRegistrations}</h3>
-                    </div>
+                {/* Attendees Table */}
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+                  <div className="p-4 border-b border-gray-800 flex justify-between items-center">
+                    <h3 className="text-sm font-bold text-white">Attendee Registrations</h3>
+                    <input
+                      type="text"
+                      placeholder="Filter by name, pass ID..."
+                      value={adminSearchTerm}
+                      onChange={e => setAdminSearchTerm(e.target.value)}
+                      className="bg-gray-950 border border-gray-800 rounded-xl px-3 py-1.5 text-xs text-white"
+                    />
                   </div>
-
-                  <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl flex items-center gap-4">
-                    <div className="bg-emerald-600/20 text-emerald-400 p-3 rounded-xl">
-                      <Check className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 font-medium uppercase">Total Checked In</p>
-                      <h3 className="text-2xl font-black text-white">{totalAttended}</h3>
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl flex items-center gap-4">
-                    <div className="bg-purple-600/20 text-purple-400 p-3 rounded-xl">
-                      <Users className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-400 font-medium uppercase">Total Applications</p>
-                      <h3 className="text-2xl font-black text-white">{applications.length}</h3>
-                    </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs text-gray-300">
+                      <thead className="bg-gray-950 text-gray-400 uppercase font-semibold text-[10px]">
+                        <tr>
+                          <th className="p-3">Pass ID</th>
+                          <th className="p-3">Name</th>
+                          <th className="p-3">Email</th>
+                          <th className="p-3">Department</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {filteredRegistrations.map((reg) => (
+                          <tr key={reg.docId} className="hover:bg-gray-800/40">
+                            <td className="p-3 font-mono text-emerald-400">{reg.id}</td>
+                            <td className="p-3 font-bold text-white">{reg.name}</td>
+                            <td className="p-3 text-gray-400">{reg.email}</td>
+                            <td className="p-3">{reg.branch} ({reg.year})</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${reg.attended ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                                {reg.attended ? 'Present' : 'Absent'}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <button
+                                onClick={() => toggleAttendance(reg.docId, reg.attended)}
+                                className="text-[10px] bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded text-white"
+                              >
+                                Toggle
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -819,6 +858,102 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* MODAL: AUTH / SIGNUP */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 relative shadow-2xl">
+            <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex gap-4 border-b border-gray-800 mb-6">
+              <button
+                onClick={() => setAuthMode('signup')}
+                className={`pb-2 text-xs font-bold transition border-b-2 ${authMode === 'signup' ? 'border-emerald-500 text-white' : 'border-transparent text-gray-400'}`}
+              >
+                New Registration
+              </button>
+              <button
+                onClick={() => setAuthMode('login')}
+                className={`pb-2 text-xs font-bold transition border-b-2 ${authMode === 'login' ? 'border-emerald-500 text-white' : 'border-transparent text-gray-400'}`}
+              >
+                Find Existing Pass
+              </button>
+            </div>
+
+            {authMode === 'signup' ? (
+              <form onSubmit={handleSignUpAndRegister} className="space-y-4">
+                <div>
+                  <label className="block text-xs text-gray-400 uppercase font-semibold mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={authForm.name}
+                    onChange={e => setAuthForm({...authForm, name: e.target.value})}
+                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 uppercase font-semibold mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={authForm.email}
+                    onChange={e => setAuthForm({...authForm, email: e.target.value})}
+                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-gray-400 uppercase font-semibold mb-1">Branch</label>
+                    <input
+                      type="text"
+                      placeholder="CSE"
+                      value={authForm.branch}
+                      onChange={e => setAuthForm({...authForm, branch: e.target.value})}
+                      className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 uppercase font-semibold mb-1">Year</label>
+                    <select
+                      value={authForm.year}
+                      onChange={e => setAuthForm({...authForm, year: e.target.value})}
+                      className="w-full bg-gray-950 border border-gray-800 rounded-xl px-2 py-2 text-xs text-white focus:outline-none"
+                    >
+                      <option value="1st Year">1st Year</option>
+                      <option value="2nd Year">2nd Year</option>
+                      <option value="3rd Year">3rd Year</option>
+                      <option value="4th Year">4th Year</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" className="w-full bg-emerald-500 text-gray-950 font-bold text-xs py-3 rounded-xl hover:bg-emerald-600 transition mt-2">
+                  Confirm & Generate Pass
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-xs text-gray-400 uppercase font-semibold mb-1">Registered Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={searchEmail}
+                    onChange={e => setSearchEmail(e.target.value)}
+                    placeholder="Enter email used during signup"
+                    className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none"
+                  />
+                </div>
+                <button type="submit" className="w-full bg-emerald-500 text-gray-950 font-bold text-xs py-3 rounded-xl hover:bg-emerald-600 transition">
+                  Retrieve My Pass
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
