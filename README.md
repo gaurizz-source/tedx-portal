@@ -6,6 +6,7 @@ A web application designed for TEDxIGDTUW to launch campus events, issue digital
 ![alt text](image-3.png)
 ![alt text](image.png)
 ![alt text](image-4.png)
+![alt text](image-6.png)
 
 DEFAULT ADMIN ACCESS PASSCODE
                             **tedx2026admin**
