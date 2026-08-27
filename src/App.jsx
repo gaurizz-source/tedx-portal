@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { QrCode, CheckCircle, Shield, User, Download, FileText, LogOut, Check, Camera, Search, Filter, Users, Award, Clock } from 'lucide-react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import { db } from './firebase';
+import { collection, addDoc, getDocs, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('register');
@@ -10,17 +12,32 @@ export default function App() {
   const [authMode, setAuthMode] = useState('signup');
   const [formData, setFormData] = useState({ name: '', email: '', branch: '', year: '' });
   
-  // Real-time local state tracking
-  const [registrations, setRegistrations] = useState([
-    { id: 'TEDX-101', name: 'Ananya Sharma', email: 'ananya@igdtuw.ac.in', branch: 'CSE', year: '3rd Year', attended: true, date: '2026-08-28' },
-    { id: 'TEDX-102', name: 'Priya Singh', email: 'priya@igdtuw.ac.in', branch: 'IT', year: '2nd Year', attended: false, date: '2026-08-28' },
-    { id: 'TEDX-103', name: 'Riya Gupta', email: 'riya@igdtuw.ac.in', branch: 'ECE', year: '1st Year', attended: false, date: '2026-08-28' }
-  ]);
+  // Real-time Database State
+  const [registrations, setRegistrations] = useState([]);
 
   const [scanInput, setScanInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBranch, setFilterBranch] = useState('All');
   const [useCameraMode, setUseCameraMode] = useState(false);
+
+  // Live Sync with Firebase Firestore
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "registrations"), (snapshot) => {
+      const regList = snapshot.docs.map(doc => ({
+        docId: doc.id,
+        ...doc.data()
+      }));
+      setRegistrations(regList);
+
+      // Logged-in user data update if updated by admin
+      if (currentUser) {
+        const updatedSelf = regList.find(r => r.id === currentUser.id);
+        if (updatedSelf) setCurrentUser(updatedSelf);
+      }
+    });
+
+    return () => unsub();
+  }, [currentUser?.id]);
 
   // Live Camera Scanner Setup
   useEffect(() => {
@@ -28,8 +45,8 @@ export default function App() {
     if (activeTab === 'admin' && useCameraMode) {
       scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: { width: 250, height: 250 } }, false);
       scanner.render(
-        (decodedText) => {
-          markAttendance(decodedText);
+        async (decodedText) => {
+          await markAttendance(decodedText);
           alert(`Attendance Verified for ID: ${decodedText}`);
           scanner.clear();
           setUseCameraMode(false);
@@ -42,22 +59,31 @@ export default function App() {
     };
   }, [activeTab, useCameraMode]);
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email) return alert('Fill required fields');
-    
+
     const newId = `TEDX-${Math.floor(100 + Math.random() * 900)}`;
     const newUser = {
       id: newId,
-      ...formData,
+      name: formData.name,
+      email: formData.email,
+      branch: formData.branch,
+      year: formData.year,
       attended: false,
       date: new Date().toISOString().split('T')[0]
     };
 
-    setRegistrations(prev => [...prev, newUser]);
-    setCurrentUser(newUser);
-    setIsLoggedIn(true);
-    setActiveTab('dashboard');
+    try {
+      const docRef = await addDoc(collection(db, "registrations"), newUser);
+      const createdUser = { ...newUser, docId: docRef.id };
+      setCurrentUser(createdUser);
+      setIsLoggedIn(true);
+      setActiveTab('dashboard');
+    } catch (error) {
+      console.error("Error writing document: ", error);
+      alert("Registration failed! Check Firebase connection.");
+    }
   };
 
   const handleLogin = (e) => {
@@ -68,25 +94,24 @@ export default function App() {
       setIsLoggedIn(true);
       setActiveTab('dashboard');
     } else {
-      alert('User record not found!');
+      alert('User record not found in database!');
     }
   };
 
-  const markAttendance = (id) => {
+  const markAttendance = async (id) => {
     const cleanId = id.trim().toUpperCase();
-    setRegistrations(prev => prev.map(reg => 
-      reg.id === cleanId ? { ...reg, attended: true } : reg
-    ));
-    if (currentUser && currentUser.id === cleanId) {
-      setCurrentUser(prev => ({ ...prev, attended: true }));
+    const target = registrations.find(r => r.id === cleanId);
+    if (target && target.docId) {
+      const docRef = doc(db, "registrations", target.docId);
+      await updateDoc(docRef, { attended: true });
     }
   };
 
-  const handleScanSubmit = (e) => {
+  const handleScanSubmit = async (e) => {
     e.preventDefault();
     const found = registrations.find(r => r.id.toUpperCase() === scanInput.trim().toUpperCase());
     if (found) {
-      markAttendance(found.id);
+      await markAttendance(found.id);
       alert(`Attendance marked for ${found.name} (${found.id})`);
       setScanInput('');
     } else {
@@ -94,7 +119,7 @@ export default function App() {
     }
   };
 
-  // High Resolution Canvas Certificate Generator
+  // Canvas High Resolution Certificate Generator
   const downloadCertificate = (user) => {
     const canvas = document.createElement('canvas');
     canvas.width = 1200;
@@ -106,7 +131,7 @@ export default function App() {
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
     // Outer Decorative Border
-    ctx.strokeStyle = '#EB0028'; // Official TED Red Accent
+    ctx.strokeStyle = '#EB0028'; // TED Red
     ctx.lineWidth = 14;
     ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
 
@@ -133,17 +158,17 @@ export default function App() {
     ctx.font = 'extrabold 52px sans-serif';
     ctx.fillText(user.name.toUpperCase(), 600, 400);
 
-    // Underline accent
+    // Accent line
     ctx.fillStyle = '#EB0028';
     ctx.fillRect(400, 420, 400, 4);
 
-    // Description text
+    // Description
     ctx.fillStyle = '#D1D5DB';
     ctx.font = '20px sans-serif';
     ctx.fillText(`For active participation in the annual TEDxIGDTUW flagship event.`, 600, 490);
     ctx.fillText(`Issued on ${user.date || 'August 2026'} • Verified Registration ID: ${user.id}`, 600, 530);
 
-    // Signatures Section
+    // Signature Area
     ctx.strokeStyle = '#4B5563';
     ctx.beginPath();
     ctx.moveTo(250, 680); ctx.lineTo(450, 680);
@@ -155,20 +180,20 @@ export default function App() {
     ctx.fillText('Organising Committee', 350, 710);
     ctx.fillText('Faculty Coordinator', 850, 710);
 
-    // Download Handler
+    // Trigger Download
     const link = document.createElement('a');
     link.download = `${user.name.replace(/\s+/g, '_')}_TEDx_Certificate.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   };
 
-  // Metrics Logic for Admin Counter
+  // Metrics Logic for Counter Cards
   const totalCount = registrations.length;
   const attendedCount = registrations.filter(r => r.attended).length;
   const pendingCount = totalCount - attendedCount;
   const percentAttended = totalCount > 0 ? Math.round((attendedCount / totalCount) * 100) : 0;
 
-  // Search & Filter Logic
+  // Search & Filter Query
   const filteredRegistrations = registrations.filter(r => {
     const matchesSearch = r.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -315,17 +340,17 @@ export default function App() {
           </div>
         )}
 
-        {/* VIEW 3: ADMIN DESK & REAL-TIME METRICS COUNTER */}
+        {/* VIEW 3: ADMIN DESK & REAL-TIME COUNTER METRICS */}
         {activeTab === 'admin' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
                 <h2 className="text-2xl font-bold text-white">Organiser Dashboard</h2>
-                <p className="text-xs text-gray-400">Live venue check-in counter and QR scanner management desk.</p>
+                <p className="text-xs text-gray-400">Live Firebase real-time database venue check-in desk.</p>
               </div>
             </div>
 
-            {/* REAL-TIME CHECK-IN COUNTER CARDS */}
+            {/* REAL-TIME COUNTER METRICS */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-gray-900 border border-gray-800 p-4 rounded-xl">
                 <div className="flex items-center gap-2 text-gray-400 text-xs font-semibold uppercase">
