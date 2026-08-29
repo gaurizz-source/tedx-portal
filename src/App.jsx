@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Ticket, Calendar, Search, UserPlus, Mic, X,
   Send, QrCode, AlertCircle, Shield, Check, Clock, UserCheck,
@@ -54,6 +54,13 @@ export default function App() {
   const [adminSearchTerm, setAdminSearchTerm] = useState('');
   const [scanInputId, setScanInputId] = useState('');
   const [showCameraScanner, setShowCameraScanner] = useState(false);
+
+  // --- Camera QR Scanner State/Refs (NEW) ---
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+  const scanIntervalRef = useRef(null);
+  const [scanStatus, setScanStatus] = useState('Point camera at QR code...');
 
   // Sample Upcoming Events
   const upcomingEvents = [
@@ -217,6 +224,81 @@ export default function App() {
       alert(`ERROR: Pass ID "${searchId}" not found in system database!`);
     }
   };
+
+  // --- Camera QR Scanner Logic (NEW) ---
+  const loadJsQR = () => {
+    return new Promise((resolve, reject) => {
+      if (window.jsQR) { resolve(); return; }
+      const existing = document.querySelector('script[data-jsqr]');
+      if (existing) {
+        existing.addEventListener('load', () => resolve());
+        existing.addEventListener('error', () => reject(new Error('Failed to load scanner library')));
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js';
+      script.async = true;
+      script.dataset.jsqr = 'true';
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('Failed to load scanner library'));
+      document.body.appendChild(script);
+    });
+  };
+
+  const scanFrame = () => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA || !window.jsQR) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = window.jsQR(imageData.data, imageData.width, imageData.height);
+    if (code && code.data) {
+      setScanStatus(`Scanned: ${code.data}`);
+      handleQuickScan(code.data);
+      stopCameraScanner();
+    }
+  };
+
+  const startCameraScanner = async () => {
+    setShowCameraScanner(true);
+    setScanStatus('Starting camera...');
+    try {
+      await loadJsQR();
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setScanStatus('Point camera at pass QR code...');
+      scanIntervalRef.current = setInterval(scanFrame, 300);
+    } catch (err) {
+      setScanStatus('Camera access failed or not supported on this device.');
+    }
+  };
+
+  const stopCameraScanner = () => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    setShowCameraScanner(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+    };
+  }, []);
+  // --- End Camera QR Scanner Logic ---
 
   const handleDownloadCertificate = (name, eventName) => {
     alert(`Generating & Downloading Participation Certificate for ${name} (${eventName})...`);
@@ -791,6 +873,10 @@ export default function App() {
                     <button onClick={() => handleQuickScan()} className="bg-emerald-500 text-gray-950 text-xs font-bold px-4 py-2 rounded-xl hover:bg-emerald-600">
                       Check In
                     </button>
+                    {/* NEW: Camera Scan Button */}
+                    <button onClick={startCameraScanner} className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5">
+                      <Camera className="w-4 h-4" /> Scan via Camera
+                    </button>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -951,6 +1037,25 @@ export default function App() {
                 </button>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CAMERA QR SCANNER (NEW) */}
+      {showCameraScanner && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 border border-gray-800 w-full max-w-md rounded-3xl p-6 relative shadow-2xl">
+            <button onClick={stopCameraScanner} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+              <X className="w-5 h-5" />
+            </button>
+            <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+              <Camera className="w-4 h-4 text-emerald-400" /> Scan Pass QR Code
+            </h3>
+            <div className="rounded-xl overflow-hidden border border-gray-800 bg-black">
+              <video ref={videoRef} className="w-full h-64 object-cover" muted playsInline />
+            </div>
+            <canvas ref={canvasRef} className="hidden" />
+            <p className="text-xs text-gray-400 mt-3 text-center">{scanStatus}</p>
           </div>
         </div>
       )}
